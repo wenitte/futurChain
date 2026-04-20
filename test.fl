@@ -1,1 +1,49 @@
-assert("hello world")
+// test.fl — FuturChain native token program
+// Demonstrates FL program + proof layers working together.
+// Compile: fl build test.fl -o native_token
+// Deploy:  futurchain deploy native_token.so
+
+program NativeToken {
+
+  account Wallet {
+    owner   ∈ Address,
+    balance ∈ TokenAmount,
+    nonce   ∈ Nat,
+  } →
+
+  error WalletError {
+    | InsufficientFunds("balance too low for transfer")
+    | Unauthorized("signer does not own this account")
+    | Overflow("arithmetic overflow")
+  } →
+
+  instruction transfer(
+    from: mut signer ∈ Wallet,
+    to:   mut        ∈ Wallet,
+    amount ∈ TokenAmount,
+  ) {
+    require(from.balance >= amount, InsufficientFunds) →
+    from.balance = from.balance - amount →
+    to.balance   = to.balance + amount →
+    from.nonce   = from.nonce + 1
+  } →
+
+  instruction burn(
+    account: mut signer ∈ Wallet,
+    amount ∈ TokenAmount,
+  ) {
+    require(account.balance >= amount, InsufficientFunds) →
+    account.balance = account.balance - amount
+  }
+
+} →
+
+// Formal proof: transfer is balance-conserving
+theorem TransferConservation() {
+  assume(from.balance ≥ amount ∧ amount > 0) →
+  declareToProve(from.balance + to.balance = (from.balance - amount) + (to.balance + amount))
+} ↔
+
+proof TransferConservation() {
+  conclude(from.balance + to.balance = (from.balance - amount) + (to.balance + amount))
+}

@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  node1:
+    build: .
+    ports:
+      - "8899:8899"
+    command: ["--host", "0.0.0.0", "--port", "8899", "--slot-ms", "400"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8899/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  node2:
+    build: .
+    ports:
+      - "8900:8899"
+    command: ["--host", "0.0.0.0", "--port", "8899", "--slot-ms", "400"]
+
+  node3:
+    build: .
+    ports:
+      - "8901:8899"
+    command: ["--host", "0.0.0.0", "--port", "8899", "--slot-ms", "400"]
