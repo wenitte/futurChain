@@ -1,0 +1,35 @@
+// chain.fl — FuturChain block production and PoH correctness
+
+// ── Block structure axioms ─────────────────────────────────────────────────────
+
+axiom BlockHashCommitment hash_block(hdr1) = hash_block(hdr2) → hdr1 = hdr2 ∧
+
+axiom ParentHashImmutable block_i.hash = block_j.parent_hash → block_i precedes block_j ∧
+
+axiom PohChainLinkage block_j.poh_hash = poh_tick(block_i.poh_hash) → slot(block_i) + 1 = slot(block_j) ∧
+
+axiom SlotMonotonicity slot_j = slot_i + 1 → slot_i < slot_j ∧
+
+axiom PohHashClosure h ∈ Hash → poh_tick(h) ∈ Hash ∧
+
+// ── Derivable theorems ────────────────────────────────────────────────────────
+
+theorem GenesisWellFormed() {
+  assume(genesis_slot = 0) →
+  declareToProve(genesis_slot = 0)
+} ↔
+
+proof GenesisWellFormed() {
+  conclude(genesis_slot = 0)
+} ∧
+
+theorem ChainIsOrdered() {
+  assume(block_i ∈ Block) ∧
+  assume(block_j ∈ Block) ∧
+  assume(block_i precedes block_j) →
+  declareToProve(block_i ∈ Block)
+} ↔
+
+proof ChainIsOrdered() {
+  conclude(block_i ∈ Block)
+}

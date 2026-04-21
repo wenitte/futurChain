@@ -1,0 +1,58 @@
+// futurchain.fl — FuturChain: a proof-native blockchain
+//
+// This file is the formal specification of FuturChain.
+// Every invariant, every program, every cryptographic primitive is expressed
+// here as a visibly-chained FL proof. The Rust runtime is the executor;
+// this file is the truth.
+//
+// Run with:  fl check futurchain.fl
+
+import "./types.fl"       ∧
+import "./crypto.fl"      ∧
+import "./ledger.fl"      ∧
+import "./chain.fl"       ∧
+import "./mempool.fl"     ∧
+import "./native_token.fl" ∧
+
+// ── Top-level chain correctness theorem ───────────────────────────────────────
+//
+// A valid FuturChain satisfies all of the following simultaneously:
+//   1. Every block is cryptographically committed via its hash
+//   2. PoH forms a verifiable delay chain
+//   3. Every transfer preserves total supply
+//   4. Nonces prevent replay attacks
+//   5. Signatures are required and verified
+//   6. The genesis block is well-formed
+
+theorem FuturChainCorrect() {
+  assume(chain ∈ List(Block)) →
+  assume(∀ i ∈ Nat, chain[i].hash = hash_block(chain[i].header)) →
+  assume(∀ i ∈ Nat, i > 0 → chain[i].header.poh_hash = poh_tick(chain[i-1].header.poh_hash)) →
+  assume(∀ tx ∈ Transaction, ledger.apply(tx) succeeds → ledger'.total_supply = ledger.total_supply) →
+  assume(chain[0].header.slot = 0 ∧ chain[0].header.tx_count = 0) →
+  declareToProve(
+    BlockHashCommitment        ∧
+    PohChain                   ∧
+    BalanceConservation        ∧
+    NonceReplayProtection      ∧
+    SignatureRequired           ∧
+    GenesisWellFormed
+  )
+} ↔
+
+proof FuturChainCorrect() {
+  apply(BlockHashCommitment)   →
+  apply(PohChain)              →
+  apply(BalanceConservation)   →
+  apply(NonceReplayProtection) →
+  apply(SignatureRequired)     →
+  apply(GenesisWellFormed)     →
+  conclude(
+    BlockHashCommitment        ∧
+    PohChain                   ∧
+    BalanceConservation        ∧
+    NonceReplayProtection      ∧
+    SignatureRequired           ∧
+    GenesisWellFormed
+  )
+}

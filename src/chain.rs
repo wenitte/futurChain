@@ -1,19 +1,21 @@
 use crate::crypto;
 use crate::ledger::Ledger;
-use crate::types::{Address, Block, BlockHeader, Hash, Slot, Transaction};
+use crate::types::{Address, Block, BlockHeader, Event, Hash, Slot, Transaction};
 
 pub struct Chain {
-    pub blocks:   Vec<Block>,
-    pub ledger:   Ledger,
-    pub slot:     Slot,
-    pub poh_hash: Hash,
+    pub blocks:      Vec<Block>,
+    pub ledger:      Ledger,
+    pub slot:        Slot,
+    pub poh_hash:    Hash,
+    /// Global event log across all slots — indexed for fast lookup
+    pub event_log:   Vec<Event>,
 }
 
 impl Chain {
     pub fn new() -> Self {
         let genesis  = Block::genesis();
         let poh_hash = genesis.header.poh_hash;
-        Self { blocks: vec![genesis], ledger: Ledger::new(), slot: 0, poh_hash }
+        Self { blocks: vec![genesis], ledger: Ledger::new(), slot: 0, poh_hash, event_log: vec![] }
     }
 
     pub fn tip_hash(&self) -> Hash {
@@ -58,12 +60,24 @@ impl Chain {
         };
 
         let hash  = Block::compute_hash(&header);
-        let block = Block { header, transactions: valid_txs, hash };
+        let block = Block { header, transactions: valid_txs, events: vec![], hash };
         self.blocks.push(block.clone());
         block
     }
 
     pub fn height(&self) -> usize { self.blocks.len() }
+
+    /// All events emitted by programs in a given slot's block
+    pub fn events_at_slot(&self, slot: Slot) -> &[Event] {
+        self.blocks.get(slot as usize)
+            .map(|b| b.events.as_slice())
+            .unwrap_or(&[])
+    }
+
+    /// Most recent N events across all slots (newest first)
+    pub fn recent_events(&self, limit: usize) -> Vec<&Event> {
+        self.event_log.iter().rev().take(limit).collect()
+    }
 }
 
 #[cfg(test)]

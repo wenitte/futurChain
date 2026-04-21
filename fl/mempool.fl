@@ -1,0 +1,11 @@
+// mempool.fl — Mempool deduplication and ordering invariants
+
+struct Mempool {
+  max_size ∈ Nat,
+} ∧
+
+axiom MempoolNoDuplicates hash_tx(tx) ∈ seen → push(tx) = false ∧
+
+axiom MempoolBounded len(queue) = max_size → push(tx) = false ∧
+
+axiom MempoolFifo position(tx1, queue) < position(tx2, queue) → position(tx1, drain(queue)) < position(tx2, drain(queue))

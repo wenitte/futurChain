@@ -50,6 +50,28 @@ pub struct SubmitTxResponse {
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
+/// On-chain event response
+#[derive(Serialize)]
+pub struct EventResponse {
+    pub slot:       Slot,
+    pub program_id: String,
+    pub name:       String,
+    pub data_hex:   String,
+}
+
+/// PDA derivation request/response
+#[derive(Deserialize)]
+pub struct PdaRequest {
+    pub seeds:      Vec<String>, // hex-encoded seed bytes
+    pub program_id: String,
+}
+
+#[derive(Serialize)]
+pub struct PdaResponse {
+    pub address: String,
+    pub bump:    u8,
+}
+
 pub fn router(chain: SharedChain, mempool: SharedMempool) -> Router {
     Router::new()
         .route("/health",              get(health))
@@ -57,6 +79,9 @@ pub fn router(chain: SharedChain, mempool: SharedMempool) -> Router {
         .route("/block/:slot",         get(get_block))
         .route("/account/:address",    get(get_account))
         .route("/transaction",         post(submit_tx))
+        .route("/events",              get(get_recent_events))
+        .route("/events/:slot",        get(get_events_at_slot))
+        .route("/pda",                 post(derive_pda))
         .with_state((chain, mempool))
 }
 
@@ -123,4 +148,50 @@ async fn submit_tx(
         tx_hash,
         reason: if accepted { None } else { Some("mempool full or duplicate".into()) },
     })
+}
+
+async fn get_recent_events(State((chain, _)): State<AppState>) -> Json<Vec<EventResponse>> {
+    let c = chain.lock().unwrap();
+    let events = c.recent_events(50).into_iter().map(event_to_resp).collect();
+    Json(events)
+}
+
+async fn get_events_at_slot(
+    State((chain, _)): State<AppState>,
+    Path(slot): Path<u64>,
+) -> Json<Vec<EventResponse>> {
+    let c = chain.lock().unwrap();
+    let events = c.events_at_slot(slot).iter().map(event_to_resp).collect();
+    Json(events)
+}
+
+async fn derive_pda(
+    State((_, _)): State<AppState>,
+    Json(req): Json<PdaRequest>,
+) -> Result<Json<PdaResponse>, (StatusCode, String)> {
+    use crate::crypto::find_pda;
+    let prog_bytes = hex::decode(&req.program_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, "program_id must be hex".into()))?;
+    if prog_bytes.len() != 32 {
+        return Err((StatusCode::BAD_REQUEST, "program_id must be 32 bytes".into()));
+    }
+    let mut program_id = [0u8; 32];
+    program_id.copy_from_slice(&prog_bytes);
+
+    let decoded_seeds: Result<Vec<Vec<u8>>, _> = req.seeds.iter().map(|s| hex::decode(s)).collect();
+    let decoded_seeds = decoded_seeds
+        .map_err(|_| (StatusCode::BAD_REQUEST, "seeds must be hex-encoded".into()))?;
+    let seed_slices: Vec<&[u8]> = decoded_seeds.iter().map(|v| v.as_slice()).collect();
+
+    let (addr, bump) = find_pda(&seed_slices, &program_id);
+    Ok(Json(PdaResponse { address: hex_address(&addr), bump }))
+}
+
+fn event_to_resp(e: &crate::types::Event) -> EventResponse {
+    EventResponse {
+        slot:       e.slot,
+        program_id: hex_address(&e.program_id),
+        name:       e.name.clone(),
+        data_hex:   hex::encode(&e.data),
+    }
 }

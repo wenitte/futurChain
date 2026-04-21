@@ -1,0 +1,68 @@
+// native_token.fl — FuturChain native token program
+//
+// The NativeToken program is the on-chain definition of token transfers,
+// airdrops, and burn. The FL source is the truth — the Rust runtime
+// must implement these instructions exactly.
+
+program NativeToken {
+
+  account TokenAccount {
+    owner   ∈ Address,
+    balance ∈ TokenAmount,
+    nonce   ∈ Nat,
+  } →
+
+  error NativeTokenError {
+    | InsufficientFunds("sender balance is too low for this transfer")
+    | Unauthorized("signer is not the account owner")
+    | Overflow("arithmetic overflow in token amount")
+  } →
+
+  instruction transfer(
+    sender:    mut signer ∈ TokenAccount,
+    recipient: mut        ∈ TokenAccount,
+    amount:               ∈ TokenAmount,
+  ) {
+    require(sender.balance >= amount, NativeTokenError::InsufficientFunds)
+    transfer(sender, recipient, amount)
+    emit(Transfer,
+      from:   sender.owner,
+      to:     recipient.owner,
+      amount: amount
+    )
+  } →
+
+  instruction airdrop(
+    authority: signer ∈ TokenAccount,
+    recipient: mut    ∈ TokenAccount,
+    amount:           ∈ TokenAmount,
+  ) {
+    require(authority.owner = MINT_AUTHORITY, NativeTokenError::Unauthorized)
+    recipient.balance = recipient.balance + amount
+    emit(Airdrop,
+      to:     recipient.owner,
+      amount: amount
+    )
+  } →
+
+  instruction burn(
+    owner:  mut signer ∈ TokenAccount,
+    amount:            ∈ TokenAmount,
+  ) {
+    require(owner.balance >= amount, NativeTokenError::InsufficientFunds)
+    owner.balance = owner.balance - amount
+    emit(Burn,
+      from:   owner.owner,
+      amount: amount
+    )
+  }
+
+} ∧
+
+// ── Correctness axioms ────────────────────────────────────────────────────────
+
+axiom TransferCorrect sender.balance >= amount → transfer(sender, recipient, amount) = (sender.balance - amount, recipient.balance + amount) ∧
+
+axiom AirdropPreservesExisting airdrop(authority, recipient, amount) → existing.balance = existing.balance ∧
+
+axiom BurnReducesSupply burn(owner, amount) → total_supply' = total_supply - amount

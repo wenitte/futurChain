@@ -123,6 +123,18 @@ impl Transaction {
     }
 }
 
+// ── Event ─────────────────────────────────────────────────────────────────────
+
+/// An event emitted by a program instruction and recorded in the block log.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Event {
+    #[serde(with = "serde_addr")]
+    pub program_id: Address,
+    pub name:       String,
+    pub data:       Vec<u8>,
+    pub slot:       Slot,
+}
+
 // ── Block ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,6 +158,7 @@ pub struct BlockHeader {
 pub struct Block {
     pub header:       BlockHeader,
     pub transactions: Vec<Transaction>,
+    pub events:       Vec<Event>,
     #[serde(with = "serde_hash")]
     pub hash:         Hash,
 }
@@ -171,7 +184,7 @@ impl Block {
             timestamp: 0, tx_count: 0,
         };
         let hash = Self::compute_hash(&header);
-        Self { header, transactions: vec![], hash }
+        Self { header, transactions: vec![], events: vec![], hash }
     }
 }
 

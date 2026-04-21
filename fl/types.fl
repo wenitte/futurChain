@@ -1,0 +1,37 @@
+// types.fl — FuturChain primitive type definitions
+//
+// All on-chain types are defined here as structs.
+// These are the ground truth — the Rust runtime mirrors these exactly.
+
+struct Account {
+  address  ∈ Address,
+  balance  ∈ TokenAmount,
+  nonce    ∈ Nat,
+  owner    ∈ Address,
+} ∧
+
+struct Transaction {
+  nonce          ∈ Nat,
+  sender         ∈ Address,
+  recipient      ∈ Address,
+  amount         ∈ TokenAmount,
+  fee            ∈ TokenAmount,
+  recent_hash    ∈ Hash,
+  signature      ∈ Signature,
+} ∧
+
+struct BlockHeader {
+  slot        ∈ Slot,
+  parent_hash ∈ Hash,
+  poh_hash    ∈ Hash,
+  tx_root     ∈ Hash,
+  state_root  ∈ Hash,
+  proposer    ∈ Address,
+  timestamp   ∈ Nat,
+  tx_count    ∈ Nat,
+} ∧
+
+struct Block {
+  header       ∈ BlockHeader,
+  hash         ∈ Hash,
+}

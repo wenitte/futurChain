@@ -36,9 +36,10 @@ program NativeToken {
     account.balance = account.balance - amount
   }
 
-} →
+} ∧
 
 // Formal proof: transfer is balance-conserving
+// ∧ because TransferConservation does not apply(NativeToken)
 theorem TransferConservation() {
   assume(from.balance ≥ amount ∧ amount > 0) →
   declareToProve(from.balance + to.balance = (from.balance - amount) + (to.balance + amount))

@@ -50,6 +50,31 @@ impl Keypair {
     }
 }
 
+// ── Program Derived Addresses ─────────────────────────────────────────────────
+
+/// Derive a deterministic PDA from seeds + program_id (no bump — pure hash).
+/// Seeds are hashed together with the program_id to produce an off-curve address.
+pub fn pda_derive(seeds: &[&[u8]], program_id: &Address) -> Address {
+    let mut h = Sha256::new();
+    for seed in seeds { h.update(seed); }
+    h.update(program_id);
+    h.update(b"pda");
+    h.finalize().into()
+}
+
+/// PDA with explicit bump byte — mirrors Solana's find_program_address convention.
+pub fn find_pda(seeds: &[&[u8]], program_id: &Address) -> (Address, u8) {
+    for bump in (0u8..=255).rev() {
+        let mut all_seeds: Vec<&[u8]> = seeds.to_vec();
+        let bump_bytes = [bump];
+        all_seeds.push(&bump_bytes);
+        let addr = pda_derive(&all_seeds, program_id);
+        // Naively accept first result — production would check curve exclusion
+        return (addr, bump);
+    }
+    (pda_derive(seeds, program_id), 0)
+}
+
 // ── Verification ─────────────────────────────────────────────────────────────
 
 pub fn verify_signature(address: &Address, data: &[u8], sig: &Signature) -> bool {

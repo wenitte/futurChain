@@ -1,0 +1,36 @@
+// crypto.fl — Cryptographic primitives for FuturChain
+//
+// `native fn` — runtime primitives, registered as axioms in the kernel.
+// `axiom` — security assumptions accepted under standard hardness assumptions
+//           (random oracle model, CDH, Ed25519 unforgeability).
+//
+// None of these are proveable from categorical rules — they are the bedrock
+// on which all chain correctness theorems rest.
+
+native fn sha256(data ∈ Hash) -> Hash ∧
+
+native fn poh_tick(prev ∈ Hash) -> Hash ∧
+
+native fn verify_sig(address ∈ Address, data ∈ Hash, sig ∈ Signature) -> Bool ∧
+
+native fn pda_derive(seed ∈ Hash, program_id ∈ Address) -> Address ∧
+
+native fn hash_block(header ∈ BlockHeader) -> Hash ∧
+
+native fn hash_tx(tx ∈ Transaction) -> Hash ∧
+
+// ── Security axioms ───────────────────────────────────────────────────────────
+
+axiom SHA256_CollisionResistance sha256(a) = sha256(b) → a = b ∧
+
+axiom SigUnforgeability verify_sig(addr, data, sig) = true → sig = sign(sk(addr), data) ∧
+
+axiom PdaOffCurve pda_derive(seed, pid) ∉ Ed25519_curve ∧
+
+// ── Derived axioms ─────────────────────────────────────────────────────────────
+// These follow from SHA256_CollisionResistance but require first-order
+// unification beyond the categorical kernel — accepted as axioms here.
+
+axiom PohTickInjective poh_tick(h1) = poh_tick(h2) → h1 = h2 ∧
+
+axiom HashBlockInjective hash_block(hdr1) = hash_block(hdr2) → hdr1 = hdr2

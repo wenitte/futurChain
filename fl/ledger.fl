@@ -1,0 +1,28 @@
+// ledger.fl — FuturChain account model and transfer invariants
+//
+// Axioms: accepted as ground truth; the Rust runtime must satisfy them.
+// Theorems: derived from axioms by the categorical kernel.
+
+// ── Arithmetic axioms (outside categorical kernel range) ──────────────────────
+
+axiom BalanceConservation (sender - amount) + (recipient + amount) = sender + recipient ∧
+
+axiom NonceStrictlyIncreases n + 1 ≠ n ∧
+
+axiom NatSubtractUnderspend balance < amount → balance - amount < 0 ∧
+
+// ── Ledger application axioms ─────────────────────────────────────────────────
+
+axiom SignatureRequired verify_sig(sender, sig_bytes, sig) = false → apply(tx) = Error ∧
+
+axiom SufficientBalance balance < amount → apply(tx) = Error ∧
+
+axiom NonceMatch tx.nonce ≠ account.nonce → apply(tx) = Error ∧
+
+axiom StateRootDeterministic accounts_a = accounts_b → state_root(accounts_a) = state_root(accounts_b) ∧
+
+// ── Closure axioms ────────────────────────────────────────────────────────────
+
+axiom NoReplay nonce_after = nonce_before + 1 → nonce_after ≠ nonce_before ∧
+
+axiom TokenAmountClosure sender_balance ∈ TokenAmount ∧ recipient_balance ∈ TokenAmount → sender_balance + recipient_balance ∈ TokenAmount
